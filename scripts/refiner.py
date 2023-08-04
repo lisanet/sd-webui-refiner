@@ -35,7 +35,6 @@ class Refiner(scripts.Script):
         super().__init__()
         self.callback_set = False
         self.model = None
-        self.conditioner = None
         self.base = None
         self.swapped = False
         self.model_name = ''

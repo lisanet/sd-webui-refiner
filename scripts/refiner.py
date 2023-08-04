@@ -131,7 +131,7 @@ class Refiner(scripts.Script):
         self.uc_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_low_aesthetic_score).unsqueeze(0).to(devices.device))
         
         def denoiser_callback(params: script_callbacks.CFGDenoiserParams):
-            if params.sampling_step > params.total_sampling_steps 0.8 - 2:
+            if params.sampling_step > params.total_sampling_steps * 0.8 - 2:
                 params.text_cond['vector'] = torch.cat((params.text_cond['vector'][:, :2304], self.c_ae), 1)
                 params.text_uncond['vector'] = torch.cat((params.text_uncond['vector'][:, :2304], self.uc_ae), 1)
                 params.text_cond['crossattn'] = params.text_cond['crossattn'][:, :, -1280:]

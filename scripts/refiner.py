@@ -98,7 +98,7 @@ class Refiner(scripts.Script):
         with gr.Accordion(label='Refiner', open=False):
             enable = gr.Checkbox(label='Enable Refiner', value=False)
             with gr.Row():
-                checkpoint = gr.Dropdown(choices=['None', *sd_models.checkpoints_list.keys()], label='Model', value=self.config.get('checkpoint', 'None'))
+                checkpoint = gr.Dropdown(choices=['None', *sd_models.checkpoints_list.keys()], label='Model')
             
         ui = [enable, checkpoint]
         return ui

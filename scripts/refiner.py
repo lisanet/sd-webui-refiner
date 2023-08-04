@@ -1,4 +1,3 @@
-from pathlib import Path
 import torch
 from modules import scripts, script_callbacks, devices, sd_models, sd_models_config, shared
 import gradio as gr
@@ -7,28 +6,12 @@ import sgm.modules.diffusionmodules.discretizer
 from sgm.modules.encoders.modules import ConcatTimestepEmbedderND
 from safetensors.torch import load_file, load
 from sgm.modules.diffusionmodules.wrappers import OPENAIUNETWRAPPER
+from omegaconf import OmegaConf
 from sgm.util import (
     disabled_train,
     get_obj_from_str,
     instantiate_from_config,
 )
-
-def safe_import(import_name, pkg_name=None):
-    try:
-        __import__(import_name)
-    except Exception:
-        pkg_name = pkg_name or import_name
-        import pip
-        if hasattr(pip, 'main'):
-            pip.main(['install', pkg_name])
-        else:
-            pip._internal.main(['install', pkg_name])
-        __import__(import_name)
-        
-
-safe_import('omegaconf')
-from omegaconf import OmegaConf
-
 
 class Refiner(scripts.Script):
     def __init__(self):
@@ -56,21 +39,20 @@ class Refiner(scripts.Script):
         ).eval()
         self.model.to('cpu', devices.dtype_unet)
         self.model.train = disabled_train
-        dtype = next(self.model.diffusion_model.parameters()).dtype
-        self.model.diffusion_model.dtype = dtype
+        self.model.diffusion_model.dtype = devices.dtype_unet
         self.model.conditioning_key = 'crossattn'
         self.model.cond_stage_key = 'txt'
         self.model.parameterization = 'v'
         discretization = sgm.modules.diffusionmodules.discretizer.LegacyDDPMDiscretization()
-        self.model.alphas_cumprod = torch.asarray(discretization.alphas_cumprod, device=devices.device, dtype=dtype)
+        self.model.alphas_cumprod = torch.asarray(discretization.alphas_cumprod, device=devices.device, dtype=devices.dtype_unet)
         for param in self.model.parameters():
             param.requires_grad = False
     
     def load_model(self, model_name):
         if not shared.opts.disable_mmap_load_safetensors:
-                ckpt = load_file(sd_models.checkpoints_list[model_name].filename)
+            ckpt = load_file(sd_models.checkpoints_list[model_name].filename)
         else:
-                ckpt = load(open(sd_models.checkpoints_list[model_name].filename, 'rb').read())
+            ckpt = load(open(sd_models.checkpoints_list[model_name].filename, 'rb').read())
         model_type = ''
         for key in ckpt.keys():
             if 'conditioner' in key: 
@@ -93,7 +75,6 @@ class Refiner(scripts.Script):
         self.model_name = model_name
         return True
         
-
     def ui(self, is_img2img):
         with gr.Accordion(label='Refiner', open=False):
             enable = gr.Checkbox(label='Enable Refiner', value=False)
@@ -103,7 +84,6 @@ class Refiner(scripts.Script):
         ui = [enable, checkpoint]
         return ui
     
-    
     def process(self, p, enable, checkpoint):
         if not enable or checkpoint == 'None':
             script_callbacks.remove_current_script_callbacks()
@@ -112,13 +92,7 @@ class Refiner(scripts.Script):
         if self.model == None or self.model_name != checkpoint:
             if not self.load_model(checkpoint): return
         if self.base != None or self.swapped == True or self.callback_set == True:
-            self.model.to('cpu', devices.dtype_unet)
-            p.sd_model.model = self.base or p.sd_model.model
-            p.sd_model.model.to(devices.device, devices.dtype_unet)
-            script_callbacks.remove_current_script_callbacks()
-            self.base = None
-            self.swapped = False
-            self.callback_set = False
+            self.reset(p)
         self.c_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_high_aesthetic_score).unsqueeze(0).to(devices.device))
         self.uc_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_low_aesthetic_score).unsqueeze(0).to(devices.device))
         
@@ -129,8 +103,6 @@ class Refiner(scripts.Script):
                 params.text_cond['crossattn'] = params.text_cond['crossattn'][:, :, -1280:]
                 params.text_uncond['crossattn'] = params.text_uncond['crossattn'][:, :, -1280:]
                 if not self.swapped:
-                    for parameter in p.sd_model.model.parameters():
-                        parameter.to('cpu', devices.dtype_unet)
                     self.base = p.sd_model.model.to('cpu', devices.dtype_unet)
                     devices.torch_gc()
                     p.sd_model.model = self.model.to(devices.device, devices.dtype_unet)
@@ -138,22 +110,18 @@ class Refiner(scripts.Script):
         
         def denoised_callback(params: script_callbacks.CFGDenoiserParams):
             if params.sampling_step == params.total_sampling_steps - 2:
-                self.model.to('cpu', devices.dtype_unet)
-                p.sd_model.model = self.base.to(devices.device, devices.dtype_unet)
-                self.base = None
-                self.swapped = False
-                self.callback_set = False
+                self.reset(p)
         
         if not self.callback_set:
             script_callbacks.on_cfg_denoiser(denoiser_callback)
             script_callbacks.on_cfg_denoised(denoised_callback)
             self.callback_set = True
     
-    def postprocess(self, p, processed, *args):
+    def reset(self, p):
+        self.model.to('cpu', devices.dtype_unet)
+        p.sd_model.model = (self.base or p.sd_model.model).to(devices.device, devices.dtype_unet)
         script_callbacks.remove_current_script_callbacks()
+        self.base = None
+        self.swapped = False
+        self.callback_set = False
         
-        
-        
-        
-            
-    

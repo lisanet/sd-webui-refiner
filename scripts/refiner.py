@@ -119,8 +119,6 @@ class Refiner(scripts.Script):
             self.base = None
             self.swapped = False
             self.callback_set = False
-        self.config.enable = enable
-        self.config.checkpoint = checkpoint
         self.c_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_high_aesthetic_score).unsqueeze(0).to(devices.device))
         self.uc_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_low_aesthetic_score).unsqueeze(0).to(devices.device))
         

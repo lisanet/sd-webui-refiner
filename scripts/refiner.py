@@ -75,16 +75,11 @@ class Refiner(scripts.Script):
         for key in ckpt.keys():
             if 'conditioner' in key: 
                 model_type = 'Refiner'
-            if 'input_blocks.7.1.transformer_blocks.4.attn1.to_k.weight' in key:
-                model_type = 'Base'
                 break
         if model_type != 'Refiner': 
             self.enable = False
             script_callbacks.remove_current_script_callbacks()
-            if model_type == 'Base':
-                print('\nIt\'s Base model, use Refiner, extension disabled!\n')
-            else:
-                print('\nNot refiner, extension disabled!\n')
+            print('\nNot refiner, extension disabled!\n')
             return False
         
         print('\nLoading refiner...\n')

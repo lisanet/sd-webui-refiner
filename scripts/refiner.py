@@ -120,7 +120,6 @@ class Refiner(scripts.Script):
     def reset(self, p):
         self.model.to('cpu', devices.dtype_unet)
         p.sd_model.model = (self.base or p.sd_model.model).to(devices.device, devices.dtype_unet)
-        script_callbacks.remove_current_script_callbacks()
         self.base = None
         self.swapped = False
         self.callback_set = False

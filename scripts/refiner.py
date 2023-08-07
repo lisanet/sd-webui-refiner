@@ -124,7 +124,8 @@ class Refiner(scripts.Script):
         self.swapped = False
 
     def postprocess(self, p, processed, *args):
-        self.reset(p)
+        if self.base != None:
+            self.reset(p)
         script_callbacks.remove_current_script_callbacks()
         self.callback_set = False
         

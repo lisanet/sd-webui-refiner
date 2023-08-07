@@ -57,6 +57,8 @@ class Refiner(scripts.Script):
         for key in ckpt.keys():
             if 'conditioner' in key: 
                 model_type = 'Refiner'
+            if 'input_blocks.7.1.transformer_blocks.4.attn1.to_k.weight' in key:
+                model_type = 'Base'
                 break
         if model_type != 'Refiner': 
             self.enable = False

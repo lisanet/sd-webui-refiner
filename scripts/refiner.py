@@ -93,8 +93,8 @@ class Refiner(scripts.Script):
             if not self.load_model(checkpoint): return
         if self.base != None or self.swapped == True or self.callback_set == True:
             self.reset(p)
-        self.c_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_high_aesthetic_score).unsqueeze(0).to(devices.device))
-        self.uc_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_low_aesthetic_score).unsqueeze(0).to(devices.device))
+        self.c_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_high_aesthetic_score).unsqueeze(0).to(devices.device).repeat(p.batch_size, 1))
+        self.uc_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_low_aesthetic_score).unsqueeze(0).to(devices.device).repeat(p.batch_size, 1))
         
         def denoiser_callback(params: script_callbacks.CFGDenoiserParams):
             if params.sampling_step > params.total_sampling_steps * 0.8 - 2:
@@ -110,18 +110,22 @@ class Refiner(scripts.Script):
         
         def denoised_callback(params: script_callbacks.CFGDenoiserParams):
             if params.sampling_step == params.total_sampling_steps - 2:
-                self.reset(p)
+                self.reset(p, keep_hook=True)
         
         if not self.callback_set:
             script_callbacks.on_cfg_denoiser(denoiser_callback)
             script_callbacks.on_cfg_denoised(denoised_callback)
             self.callback_set = True
     
-    def reset(self, p):
+    def reset(self, p, keep_hook=False):
         self.model.to('cpu', devices.dtype_unet)
         p.sd_model.model = (self.base or p.sd_model.model).to(devices.device, devices.dtype_unet)
-        script_callbacks.remove_current_script_callbacks()
         self.base = None
         self.swapped = False
-        self.callback_set = False
+        if not keep_hook:
+            script_callbacks.remove_current_script_callbacks()
+            self.callback_set = False
+
+    def postprocess(self, p, processed, *args):
+        self.reset(p)
         

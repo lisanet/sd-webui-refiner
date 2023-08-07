@@ -91,6 +91,7 @@ class Refiner(scripts.Script):
             self.reset(p)
         if not enable or checkpoint == 'None':
             script_callbacks.remove_current_script_callbacks()
+            self.callback_set = False
             return
         if self.model_name != checkpoint:
             if not self.load_model(checkpoint): return

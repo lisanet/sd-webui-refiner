@@ -91,9 +91,8 @@ class Refiner(scripts.Script):
             self.reset(p)
         if not enable or checkpoint == 'None':
             script_callbacks.remove_current_script_callbacks()
-            self.model = None
             return
-        if self.model == None or self.model_name != checkpoint:
+        if self.model_name != checkpoint:
             if not self.load_model(checkpoint): return
         self.c_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_high_aesthetic_score).unsqueeze(0).to(devices.device).repeat(p.batch_size, 1))
         self.uc_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_low_aesthetic_score).unsqueeze(0).to(devices.device).repeat(p.batch_size, 1))
@@ -120,8 +119,7 @@ class Refiner(scripts.Script):
             self.callback_set = True
     
     def reset(self, p, keep_hook=False):
-        if self.model is not None:
-            self.model.to('cpu', devices.dtype_unet)
+        self.model.to('cpu', devices.dtype_unet)
         p.sd_model.model = (self.base or p.sd_model.model).to(devices.device, devices.dtype_unet)
         self.base = None
         self.swapped = False

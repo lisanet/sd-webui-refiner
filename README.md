@@ -11,7 +11,7 @@ Nevertheless this extension has some modfications and enhancments over sd-webui-
 
 * simplyfied ui to avoid the most common misunderstanding of the relation between refiner steps and total steps. (for more details see Handover from Base to Refiner)
 * uses a fixed point where the diffusion is handed over from the base model to the refiner. (for more details see Handover from Base to Refiner)
-* configuration can be saved with Automatic1111 Settings -> Defaults -> View Changes -> Apply
+* some code refactoring, removing unnecessary tests and variables
 
 ## Installation
 

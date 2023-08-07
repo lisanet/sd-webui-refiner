@@ -87,8 +87,6 @@ class Refiner(scripts.Script):
         return ui
     
     def process(self, p, enable, checkpoint):
-        if self.base != None or self.swapped == True or self.callback_set == True:
-            self.reset(p)
         if not enable or checkpoint == 'None':
             script_callbacks.remove_current_script_callbacks()
             self.callback_set = False

@@ -95,6 +95,9 @@ class Refiner(scripts.Script):
             if not self.load_model(checkpoint): return
         self.c_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_high_aesthetic_score).unsqueeze(0).to(devices.device).repeat(p.batch_size, 1))
         self.uc_ae = self.embedder(torch.tensor(shared.opts.sdxl_refiner_low_aesthetic_score).unsqueeze(0).to(devices.device).repeat(p.batch_size, 1))
+        p.extra_generation_params['Refiner model'] = checkpoint.rsplit('.', 1)[0]
+        p.extra_generation_params['Refiner steps'] = '20 %'
+ 
         
         def denoiser_callback(params: script_callbacks.CFGDenoiserParams):
             if params.sampling_step > params.total_sampling_steps * 0.8 - 2:

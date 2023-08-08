@@ -1,7 +1,6 @@
 import torch
 from modules import scripts, script_callbacks, devices, sd_models, sd_models_config, shared
 import gradio as gr
-import sgm.modules.diffusionmodules.denoiser_scaling
 import sgm.modules.diffusionmodules.discretizer
 from sgm.modules.encoders.modules import ConcatTimestepEmbedderND
 from safetensors.torch import load_file, load

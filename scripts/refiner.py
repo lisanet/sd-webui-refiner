@@ -19,7 +19,6 @@ class Refiner(scripts.Script):
         self.callback_set = False
         self.model = None
         self.base = None
-        self.swapped = False
         self.model_name = ''
         self.embedder = ConcatTimestepEmbedderND(256)
         self.c_ae = None
@@ -105,11 +104,10 @@ class Refiner(scripts.Script):
                 params.text_uncond['vector'] = torch.cat((params.text_uncond['vector'][:, :2304], self.uc_ae), 1)
                 params.text_cond['crossattn'] = params.text_cond['crossattn'][:, :, -1280:]
                 params.text_uncond['crossattn'] = params.text_uncond['crossattn'][:, :, -1280:]
-                if not self.swapped:
+                if self.base is None:
                     self.base = p.sd_model.model.to('cpu', devices.dtype_unet)
                     devices.torch_gc()
                     p.sd_model.model = self.model.to(devices.device, devices.dtype_unet)
-                    self.swapped = True
         
         def denoised_callback(params: script_callbacks.CFGDenoiserParams):
             if params.sampling_step == params.total_sampling_steps - 2:
@@ -124,7 +122,6 @@ class Refiner(scripts.Script):
         self.model.to('cpu', devices.dtype_unet)
         p.sd_model.model = self.base.to(devices.device, devices.dtype_unet)
         self.base = None
-        self.swapped = False
 
     def postprocess(self, p, processed, *args):
         if self.base is not None:

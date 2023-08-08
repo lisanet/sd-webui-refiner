@@ -16,7 +16,6 @@ from sgm.util import (
 class Refiner(scripts.Script):
     def __init__(self):
         super().__init__()
-        self.callback_set = False
         self.model = None
         self.base = None
         self.model_name = ''
@@ -88,7 +87,6 @@ class Refiner(scripts.Script):
     def process(self, p, enable, checkpoint):
         if not enable or checkpoint == 'None':
             script_callbacks.remove_current_script_callbacks()
-            self.callback_set = False
             return
         if self.model_name != checkpoint:
             if not self.load_model(checkpoint): return
@@ -113,10 +111,8 @@ class Refiner(scripts.Script):
             if params.sampling_step == params.total_sampling_steps - 2:
                 self.reset(p)
         
-        if not self.callback_set:
-            script_callbacks.on_cfg_denoiser(denoiser_callback)
-            script_callbacks.on_cfg_denoised(denoised_callback)
-            self.callback_set = True
+        script_callbacks.on_cfg_denoiser(denoiser_callback)
+        script_callbacks.on_cfg_denoised(denoised_callback)
     
     def reset(self, p):
         self.model.to('cpu', devices.dtype_unet)
@@ -127,5 +123,4 @@ class Refiner(scripts.Script):
         if self.base is not None:
             self.reset(p)
         script_callbacks.remove_current_script_callbacks()
-        self.callback_set = False
         

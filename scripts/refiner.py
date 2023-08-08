@@ -116,6 +116,7 @@ class Refiner(scripts.Script):
     
     def reset(self, p):
         self.model.to('cpu', devices.dtype_unet)
+        devices.torch_gc()
         p.sd_model.model = self.base.to(devices.device, devices.dtype_unet)
         self.base = None
 

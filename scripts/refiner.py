@@ -34,7 +34,8 @@ class Refiner(scripts.Script):
         self.model = get_obj_from_str(OPENAIUNETWRAPPER)(
             self.model, compile_model=False
         ).eval()
-        self.model.to('cpu', devices.dtype_unet)
+        dev = 'mps' if devices.device.type == 'mps' else 'cpu'   # on Apple Silicon mps is more efficient than switch back and forth
+        self.model = self.model.to(dev, devices.dtype_unet)
         self.model.train = disabled_train
         self.model.diffusion_model.dtype = devices.dtype_unet
         self.model.conditioning_key = 'crossattn'
@@ -86,6 +87,10 @@ class Refiner(scripts.Script):
     def process(self, p, enable, checkpoint):
         if not enable or checkpoint == 'None':
             script_callbacks.remove_current_script_callbacks()
+            self.base = None
+            self.model_name = ''
+            self.model = None
+            devices.torch_gc()
             return
         if self.model_name != checkpoint:
             if not self.load_model(checkpoint): return
@@ -102,25 +107,27 @@ class Refiner(scripts.Script):
                 params.text_cond['crossattn'] = params.text_cond['crossattn'][:, :, -1280:]
                 params.text_uncond['crossattn'] = params.text_uncond['crossattn'][:, :, -1280:]
                 if self.base is None:
-                    self.base = p.sd_model.model.to('cpu', devices.dtype_unet)
-                    devices.torch_gc()
-                    p.sd_model.model = self.model.to(devices.device, devices.dtype_unet)
-        
+                    self.base, self.model = self.switch_model(p, self.base, self.model)
+       
         def denoised_callback(params: script_callbacks.CFGDenoiserParams):
             if params.sampling_step == params.total_sampling_steps - 2:
-                self.reset(p)
+                self.model, self.base = self.switch_model(p, self.model, self.base)
         
         script_callbacks.on_cfg_denoiser(denoiser_callback)
         script_callbacks.on_cfg_denoised(denoised_callback)
     
-    def reset(self, p):
-        self.model.to('cpu', devices.dtype_unet)
-        devices.torch_gc()
-        p.sd_model.model = self.base.to(devices.device, devices.dtype_unet)
-        self.base = None
+    def switch_model(self, p, oldmodel, newmodel):
+        if devices.device.type == 'mps':     # on Apple Silicon mps is more efficient than switch back and forth
+            oldmodel = p.sd_model.model
+        else:
+            oldmodel = p.sd_model.model.to('cpu', devices.dtype_unet)
+            devices.torch_gc()
+        p.sd_model.model = newmodel.to(devices.device, devices.dtype_unet)
+        newmodel = None
+        return oldmodel, newmodel
 
     def postprocess(self, p, processed, *args):
         if self.base is not None:
-            self.reset(p)
+            self.model, self.base = self.switch_model(p, self.model, self.base)
         script_callbacks.remove_current_script_callbacks()
         
